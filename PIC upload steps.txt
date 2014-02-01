@@ -1,0 +1,7 @@
+PIC upload steps:
+
+1) Compile with gpasm.exe	(gpasm.exe <.asm file>)   (have to be in directory)
+
+2) Upload to PIC		(pk2cmd.exe -P <PIC ID> -A 5.0 -F pic_led1.hex -M)
+
+3) Turn on PIC			(pk2cmd.exe -P <PIC ID> -A 5.0 -R -T)

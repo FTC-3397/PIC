@@ -1,0 +1,1136 @@
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE  1
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00001        ;-----------------------------
+                      00002        ;Title   :PIC 16F1823 PROGRAM
+                      00003        ;FileName:pic_led1.asm
+                      00004        ;Author  :B. Green
+                      00005        ;-----------------------------
+                      00006        ;Version  0.000  Jan 05, 2014     Demo for PIC Class,  Flash LED on RA5
+                      00007        ;
+                      00008 
+                      00009 
+                      00010        ;------------------------------------------------------------
+                      00011        ; 16F1823 Features available
+                      00012        ; 1.8-5.5 Vdd (2.5V min above 16Mhz),
+                      00013        ; 32MHz max 8Mhz default ( 500ns instruction cycle )
+                      00014        ; 2K Words Program FLASH
+                      00015        ; 256 8 bit Data memory,  Self write flash
+                      00016        ; 128 8 bit Registers
+                      00017        ; 16 level stack
+                      00018        ; Has internal
+                      00019        ;      POR, BOR, PWRT, MCLR, TMR0,TMR1,TMR2, OSC 0.031-32M, NCO
+                      00020        ;      ADC 10 bit (8 chan), CWG, 10 bit PWM (2), 5 bit DAC
+                      00021        ;      CLC (config Logic Block with S/R Latch),  MSSP, EUSART
+                      00022        ;      Extended WTD 1ms < WDT < 256 sec
+                      00023        ; RETURN, RETLW, RETFIE
+                      00024        ;
+                      00025        ;  EEProm is at 00 to FF but is allocated to 1E000h-1E1FFh in the hex file
+                      00026        ;
+                      00027        ;-----------------------------
+                      00028 
+                      00029 
+                      00030        ; Pin connections used
+                      00031        ; pin | name                | PgmHdr |  connection
+                      00032        ;----- --------------------- -------- ----------------
+                      00033        ;  1  | VDD                 |     2  |  +5V
+                      00034        ;  2  | RA5                 |        |  LED+ (&1K to gnd)
+                      00035        ;  3  | RA4                 |        |
+                      00036        ;  4  | VPP / MCLRn / RA3   |     1  |  Pgm Hdr pin 1
+                      00037        ;  5  | RC5                 |        |
+                      00038        ;  6  | RC4                 |        |
+                      00039        ;  7  | RC3                 |        |
+                      00040 
+                      00041        ;  8  | RC2                 |        |
+                      00042        ;  9  | RC1                 |        |
+                      00043        ; 10  | RC0                 |        |
+                      00044        ; 11  | RA2                 |        |
+                      00045        ; 12  | RA1 / ICSPCLK       |     5  |
+                      00046        ; 13  | RA0 / ICSPDAT       |     4  |
+                      00047        ; 14  | VSS                 |     3  |  Gnd
+                      00048 
+                      00049 
+                      00050 
+                      00051        list      p=16f1823, r=dec
+                      00052 
+                      00053        #include <p16f1823.inc>
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE  2
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00001         LIST
+                      00002 
+                      00003 ;==========================================================================
+                      00004 ;  MPASM PIC16F1823 processor include
+                      00005 ; 
+                      00006 ;  (c) Copyright 1999-2012 Microchip Technology, All rights reserved
+                      00007 ;==========================================================================
+                      00008 
+                      01166         LIST
+                      00054 
+                      00055 
+                      00056     ;  Assembler Directives for Program and configuration options
+8007   C9A4           00057     __CONFIG _CONFIG1, _FOSC_INTOSC & _WDTE_OFF & _PWRTE_OFF & _MCLRE_OFF & _CP_OFF & _CPD_OFF & _BOREN_
+                            OFF & _CLKOUTEN_OFF & _IESO_OFF & _FCMEN_OFF
+8008   DDFF           00058     __CONFIG _CONFIG2, _WRT_OFF & _PLLEN_ON & _STVREN_OFF & _LVP_OFF
+                      00059 
+                      00060 
+                      00061 
+                      00062 ;   ----------------------------------------
+                      00063 ;  -----    Variables and Defines     -------
+                      00064 ;   ----------------------------------------
+                      00065 
+                      00066 
+  00000005            00067 LED0            EQU  RA5
+                      00068 
+                      00069 
+                      00070 
+                      00071        ;----- GPIO Bits --------------------------------------------------------
+                      00072 
+                      00073 
+                      00074        ;  ------------------------------------
+                      00075        ; ----   General purpose Registars  ----
+                      00076        ; ----   16F1823  20h - 6Fh         ----
+                      00077        ;  ------------------------------------
+                      00078 
+                      00079        cblock  0x20                    ; 12F1822/16F1823 register space starts at 0x20.
+  00000022            00080 
+  00000020            00081        loopd500ns                      ; delay loop variables 500ns inner loop
+  00000021            00082        loopd100us                      ; delay loop variables 100us loop
+  00000022            00083        loopd1ms                        ; delay loop variables 1ms loop
+  00000022            00084 
+                      00085        endc
+                      00086 
+                      00087 
+                      00088 
+                      00089 
+                      00090        ;  ------------------------------------
+                      00091        ; ----         Commom RAM           ----
+                      00092        ; ----      12F1822  70h - 7Fh      ----
+                      00093        ;  ------------------------------------
+                      00094 
+                      00095        cblock        0x70                    ; 12F1822/16F1822 common ram space starts at 0x70
+  00000022            00096 
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE  3
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+  00000022            00097 
+                      00098        endc
+                      00099 
+                      00100 
+                      00101 
+                      00102 
+                      00103 
+                      00104        ;  ------------------------------
+                      00105        ; ----   Start of code block  ----
+                      00106        ;  ------------------------------
+                      00107 
+0000                  00108        ORG     0x00               ;  At POR all pins are inputs
+0000   282B           00109        goto    Start              ;        (reset vector)
+                      00110 
+0004                  00111        ORG     0x04               ; Interrupt routine
+                      00112 
+0004   0009           00113        retfie
+                      00114 
+                      00115 
+                      00116 ;   ----------------------------------------
+                      00117 ;  -----          Subroutines         -------
+                      00118 ;   ----------------------------------------
+                      00119 
+                      00120 
+                      00121     ;   ----------------------------------------
+                      00122     ;  -----          1S delay            -------
+                      00123     ;   ----------------------------------------
+0005                  00124 WAIT_1S
+0005   200A           00125        call    WAIT_250MS
+0006   200A           00126        call    WAIT_250MS
+0007   200A           00127        call    WAIT_250MS
+0008   200A           00128        call    WAIT_250MS
+0009   3400           00129        retlw   d'0'
+                      00130 
+                      00131     ;   ----------------------------------------
+                      00132     ;  -----          250ms delay         -------
+                      00133     ;   ----------------------------------------
+000A                  00134 WAIT_250MS
+000A   30FA           00135        movlw   d'250'                  ; 251.251 ms
+000B   281E           00136        goto    WAIT_W_MS
+                      00137 
+                      00138     ;   ----------------------------------------
+                      00139     ;  -----          200ms delay         -------
+                      00140     ;   ----------------------------------------
+000C                  00141 WAIT_200MS
+000C   30C8           00142        movlw   d'200'                  ; 251.251 ms
+000D   281E           00143        goto    WAIT_W_MS
+                      00144 
+                      00145     ;   ----------------------------------------
+                      00146     ;  -----          100ms delay         -------
+                      00147     ;   ----------------------------------------
+000E                  00148 WAIT_100MS
+000E   3064           00149        movlw   d'100'                  ; ~ 100.501 ms
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE  4
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+000F   281E           00150        goto    WAIT_W_MS
+                      00151 
+                      00152     ;   ----------------------------------------
+                      00153     ;  -----          50ms delay          -------
+                      00154     ;   ----------------------------------------
+0010                  00155 WAIT_50MS
+0010   3032           00156        movlw   d'50'                   ; ~ 50.251 ms
+0011   281E           00157        goto    WAIT_W_MS
+                      00158 
+                      00159     ;   ----------------------------------------
+                      00160     ;  -----          30ms delay          -------
+                      00161     ;   ----------------------------------------
+0012                  00162 WAIT_30MS
+0012   301E           00163        movlw   d'30'                   ; ~ 50.251 ms
+0013   281E           00164        goto    WAIT_W_MS
+                      00165 
+                      00166     ;   ----------------------------------------
+                      00167     ;  -----          20ms delay          -------
+                      00168     ;   ----------------------------------------
+0014                  00169 WAIT_20MS
+0014   3014           00170        movlw   d'20'                   ;
+0015   281E           00171        goto    WAIT_W_MS
+                      00172 
+                      00173     ;   ----------------------------------------
+                      00174     ;  -----          10ms delay          -------
+                      00175     ;   ----------------------------------------
+0016                  00176 WAIT_10MS
+0016   300A           00177        movlw   d'10'                   ;
+0017   281E           00178        goto    WAIT_W_MS
+                      00179 
+                      00180     ;   ----------------------------------------
+                      00181     ;  -----          4ms delay           -------
+                      00182     ;   ----------------------------------------
+0018                  00183 WAIT_4MS
+0018   3004           00184        movlw   d'4'                    ;
+0019   281E           00185        goto    WAIT_W_MS
+                      00186 
+                      00187     ;   ----------------------------------------
+                      00188     ;  -----          2ms delay           -------
+                      00189     ;   ----------------------------------------
+001A                  00190 WAIT_2MS
+001A   3002           00191        movlw   d'2'                    ;
+001B   281E           00192        goto    WAIT_W_MS
+                      00193 
+                      00194     ;   ----------------------------------------
+                      00195     ;  -----          1ms delay           -------
+                      00196     ;   ----------------------------------------
+001C                  00197 WAIT_1MS
+001C   3001           00198        movlw   d'1'                    ; ~ 1.006 ms
+001D   281E           00199        goto    WAIT_W_MS
+                      00200 
+                      00201 
+                      00202     ;   ----------------------------------------
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE  5
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00203     ;  -----          w ms delay          -------
+                      00204     ;   ----------------------------------------
+                      00205     ;
+001E                  00206 WAIT_W_MS
+                      00207 
+                      00208        ; aprox delay = (w * 1ms) + (w * 5us) + 1us
+001E   00A2           00209        movwf   loopd1ms                ; 0.125us
+001F                  00210 w_1ms
+001F   300A           00211        movlw   d'10'                   ; 0.125us
+0020   00A1           00212        movwf   loopd100us              ; 0.125us
+0021                  00213 w_100us
+                      00214        ; inner loop 0.5us * 200 + 0.250us = 0.100ms
+0021   30C8           00215        movlw   d'200'                  ; 0.125us
+0022   00A0           00216        movwf   loopd500ns              ; 0.125us
+0023                  00217 w_500ns                                ; next 3 instructions = 0,500us loop
+0023   0000           00218        nop                             ; 0.125us
+0024   0BA0           00219        decfsz  loopd500ns, F           ; 0.125us (0.250us if skip)
+0025   2823           00220        goto    w_500ns                 ; 0.250us
+                      00221 
+0026   0BA1           00222        decfsz  loopd100us, F           ; 0.1250us (0.250us if skip)
+0027   2821           00223        goto    w_100us                 ; 0.250us
+                      00224 
+0028   0BA2           00225        decfsz  loopd1ms, F             ; 0.1250us (0.250us if skip)
+0029   281F           00226        goto    w_1ms                   ; 0.250us
+002A   3400           00227        retlw   d'0'
+                      00228 
+                      00229 
+                      00230 
+                      00231 
+                      00232        ;   -------------------------------------------------------------
+                      00233        ; -------------       Start of Main Section   ---------------------
+                      00234        ;   -------------------------------------------------------------
+                      00235 
+002B                  00236 Start
+                      00237        ;  Set the oscillator to 32MHz and wait for it to start.  (must enable_PLLEN_ON in config bits)
+002B   0021           00238        BANKSEL OSCCON
+002C   30F0           00239        movlw   B'11110000'             ; Set OSCAL to 32 Mhz
+002D   0099           00240        movwf   OSCCON
+                      00241 
+002E   0021           00242        BANKSEL OSCSTAT
+002F                  00243 WaitOsc
+002F   1D9A           00244        btfss   OSCSTAT, HFIOFL
+0030   282F           00245        goto    WaitOsc
+                      00246 
+                      00247 
+                      00248        ; Clear all the ports at startup
+0031   0020           00249        BANKSEL PORTA                   ;
+0032   018C           00250        CLRF    PORTA                   ; Init PORTA
+                      00251 
+0033   0022           00252        BANKSEL LATA                    ; Data Latch
+0034   018C           00253        CLRF    LATA                    ;
+                      00254 
+0035   0023           00255        BANKSEL ANSELA                  ;
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE  6
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0036   018C           00256        CLRF    ANSELA                  ; digital I/O
+                      00257 
+0037   0020           00258        BANKSEL PORTC                   ;
+0038   018E           00259        CLRF    PORTC                   ; Init PORTC
+                      00260 
+0039   0022           00261        BANKSEL LATC                    ; Data Latch
+003A   018E           00262        CLRF    LATC                    ;
+                      00263 
+003B   0023           00264        BANKSEL ANSELC                  ;
+003C   018E           00265        CLRF    ANSELC                  ; digital I/O
+                      00266 
+                      00267 
+                      00268 
+003D   0021           00269        BANKSEL TRISC                   ;
+                      00270        ;Set RC<5:0> as inputs  (0=driver enabled)
+003E   303F           00271        MOVLW   b'00111111'             ;
+                      00272                 ;00------              ;  reserved
+                      00273                 ;--1-----              ;  TRISC5
+                      00274                 ;---1----              ;  TRISC4
+                      00275                 ;----1---              ;  TRISC3
+                      00276                 ;-----1--              ;  TRISC2     I2C
+                      00277                 ;------1-              ;  TRISC1     I2C
+                      00278                 ;-------1              ;  TRISC0
+003F   008E           00279        MOVWF TRISC
+                      00280 
+0040   0021           00281        BANKSEL TRISA                   ;
+                      00282        ;Set RA5 as output and set RA<4:0> as inputs  (0=driver enabled)
+0041   301F           00283        MOVLW   b'00011111'             ;
+                      00284                 ;00------              ;  reserved
+                      00285                 ;--0-----              ;  TRISA5
+                      00286                 ;---1----              ;  TRISA4
+                      00287                 ;----1---              ;  TRISA3
+                      00288                 ;-----1--              ;  TRISA2
+                      00289                 ;------1-              ;  TRISA1
+                      00290                 ;-------1              ;  TRISA0
+0042   008C           00291        MOVWF TRISA
+                      00292 
+                      00293 
+0043                  00294 main_loop
+0043   0020           00295        BANKSEL PORTA                   ;
+                      00296 
+0044   168C           00297        BSF     PORTA,LED0
+0045   200C           00298        call    WAIT_200MS
+                      00299 
+0046   128C           00300        BCF     PORTA,LED0
+0047   200C           00301        call    WAIT_200MS
+                      00302 
+0048   2843           00303        goto    main_loop
+                      00304 
+                      00305 
+                      00306 
+                      00307        ; -------------------------------
+                      00308        ;   EEProm location 1E000h-1E0FFh
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE  7
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00309        ; -------------------------------
+                      00310        ; Table: EEPROM Start Address by Device
+                      00311        ; Device           asmbler Address
+                      00312        ; ---------------  ---------------  --------
+                      00313        ; Most PIC1X MCUs  0x2100
+                      00314        ; PIC18 MCUs       0xF00000
+                      00315        ; PIC16F19XX MCUs  0xF000
+                      00316 
+F000                  00317        ORG     0xF000            ;  hex file location (hex file addresses are double
+                      00318 
+                      00319 
+                      00320 
+                      00321        END
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE  8
+
+
+SYMBOL TABLE
+  LABEL                             VALUE
+
+ABDEN                             00000000
+ABDOVF                            00000007
+ACKDT                             00000005
+ACKEN                             00000004
+ACKSTAT                           00000006
+ACKTIM                            00000007
+ADCON0                            0000009D
+ADCON1                            0000009E
+ADCS0                             00000004
+ADCS1                             00000005
+ADCS2                             00000006
+ADDEN                             00000003
+ADFM                              00000007
+ADFVR0                            00000000
+ADFVR1                            00000001
+ADGO                              00000001
+ADIE                              00000006
+ADIF                              00000006
+ADON                              00000000
+ADPREF0                           00000000
+ADPREF1                           00000001
+ADRES                             0000009B
+ADRESH                            0000009C
+ADRESL                            0000009B
+AHEN                              00000001
+AN0                               00000000
+AN1                               00000001
+AN2                               00000002
+AN3                               00000004
+AN4                               00000000
+AN5                               00000001
+AN6                               00000002
+AN7                               00000003
+ANSA0                             00000000
+ANSA1                             00000001
+ANSA2                             00000002
+ANSA4                             00000004
+ANSC0                             00000000
+ANSC1                             00000001
+ANSC2                             00000002
+ANSC3                             00000003
+ANSELA                            0000018C
+ANSELC                            0000018E
+APFCON                            0000011D
+APFCON0                           0000011D
+BAUDCON                           0000019F
+BCL1IE                            00000003
+BCL1IF                            00000003
+BF                                00000000
+BOEN                              00000004
+BORCON                            00000116
+BORRDY                            00000000
+BRG16                             00000003
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE  9
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+BRGH                              00000002
+BSR                               00000008
+BSR0                              00000000
+BSR1                              00000001
+BSR2                              00000002
+BSR3                              00000003
+BSR4                              00000004
+BSR_SHAD                          00000FE6
+C                                 00000000
+C12IN0N                           00000001
+C12IN1N                           00000001
+C12IN2N                           00000002
+C12IN3N                           00000003
+C1HYS                             00000001
+C1IE                              00000005
+C1IF                              00000005
+C1INP                             00000000
+C1INTN                            00000006
+C1INTP                            00000007
+C1NCH0                            00000000
+C1NCH1                            00000001
+C1OE                              00000005
+C1ON                              00000007
+C1OUT_CM1CON0                     00000006
+C1OUT_PORTA                       00000002
+C1PCH0                            00000004
+C1PCH1                            00000005
+C1POL                             00000004
+C1SP                              00000002
+C1SYNC                            00000000
+C2HYS                             00000001
+C2IE                              00000006
+C2IF                              00000006
+C2INP                             00000000
+C2INTN                            00000006
+C2INTP                            00000007
+C2NCH0                            00000000
+C2NCH1                            00000001
+C2OE                              00000005
+C2ON                              00000007
+C2OUT_CM2CON0                     00000006
+C2OUT_PORTC                       00000004
+C2PCH0                            00000004
+C2PCH1                            00000005
+C2POL                             00000004
+C2SP                              00000002
+C2SYNC                            00000000
+CCP1                              00000005
+CCP1AS                            00000295
+CCP1AS0                           00000004
+CCP1AS1                           00000005
+CCP1AS2                           00000006
+CCP1ASE                           00000007
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE 10
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+CCP1CON                           00000293
+CCP1IE                            00000002
+CCP1IF                            00000002
+CCP1M0                            00000000
+CCP1M1                            00000001
+CCP1M2                            00000002
+CCP1M3                            00000003
+CCPR1H                            00000292
+CCPR1L                            00000291
+CDAFVR0                           00000002
+CDAFVR1                           00000003
+CFGS                              00000006
+CHS0                              00000002
+CHS1                              00000003
+CHS2                              00000004
+CHS3                              00000005
+CHS4                              00000006
+CKE                               00000006
+CKP                               00000004
+CK_PORTA                          00000000
+CK_PORTC                          00000004
+CLKIN                             00000005
+CLKOUT                            00000004
+CLKR                              00000004
+CLKRCON                           0000039A
+CLKRDC0                           00000003
+CLKRDC1                           00000004
+CLKRDIV0                          00000000
+CLKRDIV1                          00000001
+CLKRDIV2                          00000002
+CLKREN                            00000007
+CLKROE                            00000006
+CLKRSLR                           00000005
+CM1CON0                           00000111
+CM1CON1                           00000112
+CM2CON0                           00000113
+CM2CON1                           00000114
+CMOUT                             00000115
+CPS0                              00000000
+CPS1                              00000001
+CPS2                              00000002
+CPS3                              00000004
+CPS4                              00000000
+CPS5                              00000001
+CPS6                              00000002
+CPS7                              00000003
+CPSCH0                            00000000
+CPSCH1                            00000001
+CPSCH2                            00000002
+CPSCH3                            00000003
+CPSCON0                           0000001E
+CPSCON1                           0000001F
+CPSON                             00000007
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE 11
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+CPSOUT                            00000001
+CPSRM                             00000006
+CPSRNG0                           00000002
+CPSRNG1                           00000003
+CREN                              00000004
+CSRC                              00000007
+C_SHAD                            00000000
+DACCON0                           00000118
+DACCON1                           00000119
+DACEN                             00000007
+DACLPS                            00000006
+DACOE                             00000005
+DACOUT                            00000000
+DACPSS0                           00000002
+DACPSS1                           00000003
+DACR0                             00000000
+DACR1                             00000001
+DACR2                             00000002
+DACR3                             00000003
+DACR4                             00000004
+DC                                00000001
+DC1B0                             00000004
+DC1B1                             00000005
+DC_SHAD                           00000001
+DHEN                              00000000
+DT_PORTA                          00000001
+DT_PORTC                          00000005
+D_NOT_A                           00000005
+ECCP1AS                           00000295
+EEADR                             00000191
+EEADRH                            00000192
+EEADRL                            00000191
+EECON1                            00000195
+EECON2                            00000196
+EEDAT                             00000193
+EEDATH                            00000194
+EEDATL                            00000193
+EEIE                              00000004
+EEIF                              00000004
+EEPGD                             00000007
+F                                 00000001
+FERR                              00000002
+FLT0                              00000002
+FREE                              00000004
+FSR0                              00000004
+FSR0H                             00000005
+FSR0H_SHAD                        00000FE9
+FSR0L                             00000004
+FSR0L_SHAD                        00000FE8
+FSR1                              00000006
+FSR1H                             00000007
+FSR1H_SHAD                        00000FEB
+FSR1L                             00000006
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE 12
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+FSR1L_SHAD                        00000FEA
+FVRCON                            00000117
+FVREN                             00000007
+FVRRDY                            00000006
+GCEN                              00000007
+GIE                               00000007
+GO                                00000001
+GO_NOT_DONE                       00000001
+HFIOFL                            00000003
+HFIOFR                            00000004
+HFIOFS                            00000000
+INDF0                             00000000
+INDF1                             00000001
+INTCON                            0000000B
+INTE                              00000004
+INTEDG                            00000006
+INTF                              00000001
+IOCAF                             00000393
+IOCAF0                            00000000
+IOCAF1                            00000001
+IOCAF2                            00000002
+IOCAF3                            00000003
+IOCAF4                            00000004
+IOCAF5                            00000005
+IOCAN                             00000392
+IOCAN0                            00000000
+IOCAN1                            00000001
+IOCAN2                            00000002
+IOCAN3                            00000003
+IOCAN4                            00000004
+IOCAN5                            00000005
+IOCAP                             00000391
+IOCAP0                            00000000
+IOCAP1                            00000001
+IOCAP2                            00000002
+IOCAP3                            00000003
+IOCAP4                            00000004
+IOCAP5                            00000005
+IOCIE                             00000003
+IOCIF                             00000000
+IRCF0                             00000003
+IRCF1                             00000004
+IRCF2                             00000005
+IRCF3                             00000006
+LATA                              0000010C
+LATA0                             00000000
+LATA1                             00000001
+LATA2                             00000002
+LATA4                             00000004
+LATA5                             00000005
+LATC                              0000010E
+LATC0                             00000000
+LATC1                             00000001
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE 13
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+LATC2                             00000002
+LATC3                             00000003
+LATC4                             00000004
+LATC5                             00000005
+LED0                              00000005
+LFIOFR                            00000001
+LWLO                              00000005
+MC1OUT                            00000000
+MC2OUT                            00000001
+MDBIT                             00000000
+MDCARH                            0000039F
+MDCARL                            0000039E
+MDCH0                             00000000
+MDCH1                             00000001
+MDCH2                             00000002
+MDCH3                             00000003
+MDCHODIS                          00000007
+MDCHPOL                           00000006
+MDCHSYNC                          00000005
+MDCIN1                            00000002
+MDCIN2                            00000005
+MDCL0                             00000000
+MDCL1                             00000001
+MDCL2                             00000002
+MDCL3                             00000003
+MDCLODIS                          00000007
+MDCLPOL                           00000006
+MDCLSYNC                          00000005
+MDCON                             0000039C
+MDEN                              00000007
+MDMIN                             00000003
+MDMS0                             00000000
+MDMS1                             00000001
+MDMS2                             00000002
+MDMS3                             00000003
+MDMSODIS                          00000007
+MDOE                              00000006
+MDOPOL                            00000004
+MDOUT_MDCON                       00000003
+MDOUT_PORTC                       00000004
+MDSLR                             00000005
+MDSRC                             0000039D
+MFIOFR                            00000002
+NOT_BOR                           00000000
+NOT_DONE                          00000001
+NOT_MCLR                          00000003
+NOT_PD                            00000003
+NOT_POR                           00000001
+NOT_RI                            00000002
+NOT_RMCLR                         00000003
+NOT_SS                            00000003
+NOT_T1SYNC                        00000002
+NOT_TO                            00000004
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE 14
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+NOT_WPUEN                         00000007
+OERR                              00000001
+OPTION_REG                        00000095
+OSC1                              00000005
+OSC2                              00000004
+OSCCON                            00000099
+OSCSTAT                           0000009A
+OSCTUNE                           00000098
+OSFIE                             00000007
+OSFIF                             00000007
+OSTS                              00000005
+P                                 00000004
+P1A                               00000005
+P1B                               00000004
+P1C                               00000003
+P1D                               00000002
+P1DC0                             00000000
+P1DC1                             00000001
+P1DC2                             00000002
+P1DC3                             00000003
+P1DC4                             00000004
+P1DC5                             00000005
+P1DC6                             00000006
+P1M0                              00000006
+P1M1                              00000007
+P1RSEN                            00000007
+PCIE                              00000006
+PCL                               00000002
+PCLATH                            0000000A
+PCLATH_SHAD                       00000FE7
+PCON                              00000096
+PEIE                              00000006
+PEN                               00000002
+PIE1                              00000091
+PIE2                              00000092
+PIR1                              00000011
+PIR2                              00000012
+PLLR                              00000006
+PORTA                             0000000C
+PORTC                             0000000E
+PR2                               0000001B
+PS0                               00000000
+PS1                               00000001
+PS2                               00000002
+PSA                               00000003
+PSS1AC0                           00000002
+PSS1AC1                           00000003
+PSS1BD0                           00000000
+PSS1BD1                           00000001
+PSTR1CON                          00000296
+PWM1CON                           00000294
+RA0                               00000000
+RA1                               00000001
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE 15
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+RA2                               00000002
+RA3                               00000003
+RA4                               00000004
+RA5                               00000005
+RC0                               00000000
+RC1                               00000001
+RC2                               00000002
+RC3                               00000003
+RC4                               00000004
+RC5                               00000005
+RCEN                              00000003
+RCIDL                             00000006
+RCIE                              00000005
+RCIF                              00000005
+RCREG                             00000199
+RCSTA                             0000019D
+RD                                00000000
+RSEN                              00000001
+RX9                               00000006
+RX9D                              00000000
+RXDTSEL                           00000007
+RX_PORTA                          00000001
+RX_PORTC                          00000005
+R_NOT_W                           00000002
+S                                 00000003
+SBCDE                             00000002
+SBOREN                            00000007
+SCIE                              00000005
+SCK                               00000000
+SCKP                              00000004
+SCL                               00000000
+SCS0                              00000000
+SCS1                              00000001
+SDA                               00000001
+SDAHT                             00000003
+SDI                               00000001
+SDO1SEL                           00000006
+SDOSEL                            00000006
+SDO_PORTA                         00000004
+SDO_PORTC                         00000002
+SEN                               00000000
+SENDB                             00000003
+SMP                               00000007
+SPBRG                             0000019B
+SPBRGH                            0000019C
+SPBRGL                            0000019B
+SPEN                              00000007
+SPLLEN                            00000007
+SRCLK0                            00000004
+SRCLK1                            00000005
+SRCLK2                            00000006
+SRCON0                            0000011A
+SRCON1                            0000011B
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE 16
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SREN                              00000005
+SRI                               00000001
+SRLEN                             00000007
+SRNQ                              00000004
+SRNQEN                            00000002
+SRPR                              00000000
+SRPS                              00000001
+SRQ                               00000002
+SRQEN                             00000003
+SRRC1E                            00000000
+SRRC2E                            00000001
+SRRCKE                            00000002
+SRRPE                             00000003
+SRSC1E                            00000004
+SRSC2E                            00000005
+SRSCKE                            00000006
+SRSPE                             00000007
+SS1SEL                            00000005
+SSP1ADD                           00000212
+SSP1BUF                           00000211
+SSP1CON1                          00000215
+SSP1CON2                          00000216
+SSP1CON3                          00000217
+SSP1IE                            00000003
+SSP1IF                            00000003
+SSP1MSK                           00000213
+SSP1STAT                          00000214
+SSPADD                            00000212
+SSPBUF                            00000211
+SSPCON                            00000215
+SSPCON1                           00000215
+SSPCON2                           00000216
+SSPCON3                           00000217
+SSPEN                             00000005
+SSPM0                             00000000
+SSPM1                             00000001
+SSPM2                             00000002
+SSPM3                             00000003
+SSPMSK                            00000213
+SSPOV                             00000006
+SSPSTAT                           00000214
+SSSEL                             00000005
+STATUS                            00000003
+STATUS_SHAD                       00000FE4
+STKOVF                            00000007
+STKPTR                            00000FED
+STKUNF                            00000006
+STR1A                             00000000
+STR1B                             00000001
+STR1C                             00000002
+STR1D                             00000003
+STR1SYNC                          00000004
+SWDTEN                            00000000
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE 17
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SYNC                              00000004
+Start                             0000002B
+T0CKI                             00000002
+T0CS                              00000005
+T0IE                              00000005
+T0IF                              00000002
+T0SE                              00000004
+T0XCS                             00000000
+T1CKI                             00000005
+T1CKPS0                           00000004
+T1CKPS1                           00000005
+T1CON                             00000018
+T1GCON                            00000019
+T1GGO                             00000003
+T1GGO_NOT_DONE                    00000003
+T1GPOL                            00000006
+T1GSEL                            00000003
+T1GSPM                            00000004
+T1GSS0                            00000000
+T1GSS1                            00000001
+T1GTM                             00000005
+T1GVAL                            00000002
+T1OSCEN                           00000003
+T1OSCR                            00000007
+T1OSI                             00000005
+T1OSO                             00000004
+T2CKPS0                           00000000
+T2CKPS1                           00000001
+T2CON                             0000001C
+T2OUTPS0                          00000003
+T2OUTPS1                          00000004
+T2OUTPS2                          00000005
+T2OUTPS3                          00000006
+TMR0                              00000015
+TMR0CS                            00000005
+TMR0IE                            00000005
+TMR0IF                            00000002
+TMR0SE                            00000004
+TMR1                              00000016
+TMR1CS0                           00000006
+TMR1CS1                           00000007
+TMR1GE                            00000007
+TMR1GIE                           00000007
+TMR1GIF                           00000007
+TMR1H                             00000017
+TMR1IE                            00000000
+TMR1IF                            00000000
+TMR1L                             00000016
+TMR1ON                            00000000
+TMR2                              0000001A
+TMR2IE                            00000001
+TMR2IF                            00000001
+TMR2ON                            00000002
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE 18
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+TOSH                              00000FEF
+TOSL                              00000FEE
+TRISA                             0000008C
+TRISA0                            00000000
+TRISA1                            00000001
+TRISA2                            00000002
+TRISA3                            00000003
+TRISA4                            00000004
+TRISA5                            00000005
+TRISC                             0000008E
+TRISC0                            00000000
+TRISC1                            00000001
+TRISC2                            00000002
+TRISC3                            00000003
+TRISC4                            00000004
+TRISC5                            00000005
+TRMT                              00000001
+TSEN                              00000005
+TSRNG                             00000004
+TUN0                              00000000
+TUN1                              00000001
+TUN2                              00000002
+TUN3                              00000003
+TUN4                              00000004
+TUN5                              00000005
+TX9                               00000006
+TX9D                              00000000
+TXCKSEL                           00000002
+TXEN                              00000005
+TXIE                              00000004
+TXIF                              00000004
+TXREG                             0000019A
+TXSTA                             0000019E
+TX_PORTA                          00000000
+TX_PORTC                          00000004
+UA                                00000001
+W                                 00000000
+WAIT_100MS                        0000000E
+WAIT_10MS                         00000016
+WAIT_1MS                          0000001C
+WAIT_1S                           00000005
+WAIT_200MS                        0000000C
+WAIT_20MS                         00000014
+WAIT_250MS                        0000000A
+WAIT_2MS                          0000001A
+WAIT_30MS                         00000012
+WAIT_4MS                          00000018
+WAIT_50MS                         00000010
+WAIT_W_MS                         0000001E
+WCOL                              00000007
+WDTCON                            00000097
+WDTPS0                            00000001
+WDTPS1                            00000002
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE 19
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+WDTPS2                            00000003
+WDTPS3                            00000004
+WDTPS4                            00000005
+WPUA                              0000020C
+WPUA0                             00000000
+WPUA1                             00000001
+WPUA2                             00000002
+WPUA3                             00000003
+WPUA4                             00000004
+WPUA5                             00000005
+WPUC                              0000020E
+WPUC0                             00000000
+WPUC1                             00000001
+WPUC2                             00000002
+WPUC3                             00000003
+WPUC4                             00000004
+WPUC5                             00000005
+WR                                00000001
+WREG                              00000009
+WREG_SHAD                         00000FE5
+WREN                              00000002
+WRERR                             00000003
+WUE                               00000001
+WaitOsc                           0000002F
+Z                                 00000002
+Z_SHAD                            00000002
+_BOREN_NSLEEP                     0000FDFF
+_BOREN_OFF                        0000F9FF
+_BOREN_ON                         0000FFFF
+_BOREN_SBODEN                     0000FBFF
+_BORV_HI                          0000FBFF
+_BORV_LO                          0000FFFF
+_CLKOUTEN_OFF                     0000FFFF
+_CLKOUTEN_ON                      0000F7FF
+_CONFIG1                          00008007
+_CONFIG2                          00008008
+_CPD_OFF                          0000FFFF
+_CPD_ON                           0000FEFF
+_CP_OFF                           0000FFFF
+_CP_ON                            0000FF7F
+_DEVID1                           00008006
+_FCMEN_OFF                        0000DFFF
+_FCMEN_ON                         0000FFFF
+_FOSC_ECH                         0000FFFF
+_FOSC_ECL                         0000FFFD
+_FOSC_ECM                         0000FFFE
+_FOSC_EXTRC                       0000FFFB
+_FOSC_HS                          0000FFFA
+_FOSC_INTOSC                      0000FFFC
+_FOSC_LP                          0000FFF8
+_FOSC_XT                          0000FFF9
+_IDLOC0                           00008000
+_IDLOC1                           00008001
+gpasm-1.2.0 #980 (May 17 2013)     random.asm   1-22-2014  15:40:41         PAGE 20
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+_IDLOC2                           00008002
+_IDLOC3                           00008003
+_IESO_OFF                         0000EFFF
+_IESO_ON                          0000FFFF
+_LVP_OFF                          0000DFFF
+_LVP_ON                           0000FFFF
+_MCLRE_OFF                        0000FFBF
+_MCLRE_ON                         0000FFFF
+_PLLEN_OFF                        0000FEFF
+_PLLEN_ON                         0000FFFF
+_PWRTE_OFF                        0000FFFF
+_PWRTE_ON                         0000FFDF
+_STVREN_OFF                       0000FDFF
+_STVREN_ON                        0000FFFF
+_WDTE_NSLEEP                      0000FFF7
+_WDTE_OFF                         0000FFE7
+_WDTE_ON                          0000FFFF
+_WDTE_SWDTEN                      0000FFEF
+_WRT_ALL                          0000FFFC
+_WRT_BOOT                         0000FFFE
+_WRT_HALF                         0000FFFD
+_WRT_OFF                          0000FFFF
+__16F1823                         00000001
+loopd100us                        00000021
+loopd1ms                          00000022
+loopd500ns                        00000020
+main_loop                         00000043
+w_100us                           00000021
+w_1ms                             0000001F
+w_500ns                           00000023
+
+
+MEMORY USAGE MAP ('X' = Used,  '-' = Unused)
+
+0000 : X---XXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0040 : XXXXXXXXX------- ---------------- ---------------- ----------------
+8000 : -------XX------- ---------------- ---------------- ----------------
+
+All other memory blocks unused.
+
+Program Memory Words Used:    70
+Program Memory Words Free:  1978
+
+
+Errors   :     0
+Warnings :     0 reported,     0 suppressed
+Messages :     0 reported,     0 suppressed
+
+
